@@ -1,4 +1,6 @@
 use crate::intersection::*;
+use crate::material::HDRColor;
+use crate::material::Material;
 use crate::ray::Ray;
 use crate::vector::Vector;
 
@@ -18,10 +20,19 @@ impl Sphere {
   }
 }
 
-pub struct SphereIntersection {}
+pub struct SphereIntersection {
+  radius_squared: f64,
+  ray_direction: Vector,
+  dist_to_sphere_center_squared: f64,
+  dist_to_sphere_perpendicular_squared: f64,
+}
 impl Intersection for SphereIntersection {
-  fn point() -> Vector {
-    todo!()
+  fn point(&self) -> Vector {
+    let d = (self.radius_squared
+      - (self.dist_to_sphere_center_squared - self.dist_to_sphere_perpendicular_squared))
+      .sqrt();
+
+    self.ray_direction.normalized() * (self.dist_to_sphere_perpendicular_squared.sqrt() - d)
   }
 }
 
@@ -36,8 +47,27 @@ impl IntersectsWithRay<SphereIntersection> for Sphere {
 
     if (dist_to_sphere_center_squared - dist_to_sphere_perpendicular_squared) < self.radius_squared
     {
-      return Some(SphereIntersection {});
+      return Some(SphereIntersection {
+        radius_squared: self.radius,
+        ray_direction: ray.direction,
+        dist_to_sphere_center_squared,
+        dist_to_sphere_perpendicular_squared,
+      });
     }
     None
+  }
+}
+
+impl Material for Sphere {
+  fn color_at<I>(&self, intersection: &I) -> HDRColor
+  where
+    I: Intersection,
+  {
+    let point = intersection.point();
+    HDRColor {
+      r: ((1.0 + (point.x * 2.0).sin()) / 2.0) as f32,
+      g: ((1.0 + (point.y * 2.0).cos()) / 2.0) as f32,
+      b: ((1.0 + (point.z * 2.0).sin()) / 2.0) as f32,
+    }
   }
 }

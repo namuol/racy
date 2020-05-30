@@ -2,7 +2,6 @@
 extern crate impl_ops;
 extern crate rayon;
 extern crate sdl2;
-use crate::sphere::SphereIntersection;
 use core::f64::consts::PI;
 use rayon::prelude::*;
 use sdl2::event::Event;
@@ -48,17 +47,6 @@ pub fn main() {
         .unwrap();
 
     let _image_context = sdl2::image::init(sdl2::image::InitFlag::JPG);
-    let cam = Camera::new(
-        Vector {
-            x: 0.0,
-            y: 2.0, // meters
-            z: 0.0,
-        },
-        25.0,
-        SCREEN_WIDTH,
-        SCREEN_HEIGHT,
-    );
-
     let mut canvas = window.into_canvas().present_vsync().build().unwrap();
     let texture_creator = canvas.texture_creator();
 
@@ -76,32 +64,45 @@ pub fn main() {
 
     let mut event_pump = sdl_context.event_pump().unwrap();
     let mut tick: f64 = 0.0;
-    let mut renderables = vec![
-        Box::new(Sphere::new(
-            Vector {
-                x: -2.0,
-                y: 2.0,
-                z: 12.0,
-            },
-            1.0,
-        )),
-        Box::new(Sphere::new(
+    let mut scene = Scene {
+        cam: Camera::new(
             Vector {
                 x: 0.0,
-                y: 2.0,
-                z: 12.0,
+                y: 2.0, // meters
+                z: 0.0,
             },
-            1.0,
-        )),
-        Box::new(Sphere::new(
-            Vector {
-                x: 2.0,
-                y: 2.0,
-                z: 12.0,
-            },
-            1.0,
-        )),
-    ];
+            25.0,
+            SCREEN_WIDTH,
+            SCREEN_HEIGHT,
+        ),
+        renderables: vec![
+            Box::new(Sphere::new(
+                Vector {
+                    x: -2.0,
+                    y: 2.0,
+                    z: 12.0,
+                },
+                1.0,
+            )),
+            Box::new(Sphere::new(
+                Vector {
+                    x: 0.0,
+                    y: 2.0,
+                    z: 12.0,
+                },
+                1.0,
+            )),
+            Box::new(Sphere::new(
+                Vector {
+                    x: 2.0,
+                    y: 2.0,
+                    z: 12.0,
+                },
+                1.0,
+            )),
+        ],
+    };
+
     'running: loop {
         for event in event_pump.poll_iter() {
             match event {
@@ -117,7 +118,7 @@ pub fn main() {
         canvas.clear();
         screen_texture
             .with_lock(None, |mut screen, _size| {
-                render(&cam, &mut screen, &renderables);
+                render(&scene, &mut screen);
             })
             .unwrap();
         canvas
@@ -125,19 +126,26 @@ pub fn main() {
             .unwrap();
         canvas.present();
         let mut i = 0.0;
-        for mut sphere in &mut renderables {
+        for mut sphere in &mut scene.renderables {
             sphere.center.y = 2.0 + 0.5 * ((tick) * 0.01 + i * PI * 0.45).sin();
             i += 1.0;
         }
+        scene.cam.set_angle((tick * 0.01).sin());
         tick += 1.0;
     }
 }
 
-fn render<I, R>(cam: &Camera, screen: &mut [u8], renderables: &Vec<Box<R>>)
+struct Scene<R> {
+    cam: Camera,
+    renderables: Vec<Box<R>>,
+}
+
+fn render<I, R>(scene: &Scene<R>, screen: &mut [u8])
 where
     I: Intersection,
     R: Material + IntersectsWithRay<I> + Sync,
 {
+    let cam = scene.cam;
     let screen_width = cam.screen_width as usize;
     screen.par_chunks_mut(4).enumerate().for_each(|(i, pixel)| {
         let x = i % screen_width;
@@ -145,9 +153,10 @@ where
 
         let pixel_ray = cam.get_ray_from_uv(x, y);
 
-        match cast(&pixel_ray, &renderables) {
+        match cast(&pixel_ray, &scene) {
             None => (),
             Some(color) => {
+                let color: RGB = color.into();
                 pixel[0] = color.r;
                 pixel[1] = color.g;
                 pixel[2] = color.b;
@@ -157,27 +166,12 @@ where
     });
 }
 
-const DEFAULT_SPHERE_COLOR: HDRColor = HDRColor {
-    r: 1.0,
-    g: 1.0,
-    b: 0.0,
-};
-
-impl Material for Sphere {
-    fn color_at<I>(&self, _: &I) -> HDRColor
-    where
-        I: intersection::Intersection,
-    {
-        DEFAULT_SPHERE_COLOR
-    }
-}
-
-fn cast<'a, I, R>(ray: &Ray, renderables: &'a Vec<Box<R>>) -> Option<RGB>
+fn cast<I, R>(ray: &Ray, scene: &Scene<R>) -> Option<HDRColor>
 where
     I: Intersection,
     R: Material + IntersectsWithRay<I>,
 {
-    for object in renderables {
+    for object in &scene.renderables {
         match object.intersects(ray) {
             // For now we just return the first we intersect with:
             Some(intersection) => return Some(object.color_at(&intersection).into()),
@@ -203,9 +197,9 @@ impl Into<Color> for RGB {
 impl Into<RGB> for HDRColor {
     fn into(self) -> RGB {
         RGB {
-            r: (self.r * 255.0).floor().min(255.0) as u8,
-            g: (self.g * 255.0).floor().min(255.0) as u8,
-            b: (self.b * 255.0).floor().min(255.0) as u8,
+            r: (self.r * 255.0).floor().min(255.0).max(0.0) as u8,
+            g: (self.g * 255.0).floor().min(255.0).max(0.0) as u8,
+            b: (self.b * 255.0).floor().min(255.0).max(0.0) as u8,
         }
     }
 }

@@ -2,7 +2,7 @@ use crate::ray::Ray;
 use crate::vector::Vector;
 
 pub trait Intersection {
-  fn point() -> Vector;
+  fn point(&self) -> Vector;
   // fn normal() -> Vector;
 }
 
