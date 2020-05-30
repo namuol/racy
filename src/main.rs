@@ -10,7 +10,6 @@ use sdl2::keyboard::Keycode;
 use sdl2::pixels::Color;
 
 pub mod camera;
-pub mod line;
 pub mod ray;
 pub mod vector;
 
