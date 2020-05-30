@@ -19,6 +19,7 @@
 //     p = @look.sub((@perp.mul((@xstart + u*@xmult))))
 //     return new Vector(p.x, @ystart + v*@ymult, p.z).normal()
 use crate::vector::Vector;
+use crate::ray::Ray;
 
 #[derive(Clone, Copy)]
 pub struct Camera {
@@ -78,17 +79,20 @@ impl Camera {
     self
   }
 
-  pub fn get_ray_from_uv(&self, u: u32, v: u32) -> Vector {
+  pub fn get_ray_from_uv(&self, u: usize, v: usize) -> Ray {
     let p = self.look - (self.perp * (self.xstart + (u as f64 * self.xmult)));
 
-    let mut ray = Vector {
+    let mut direction = Vector {
       x: p.x,
       y: self.ystart + (v as f64 * self.ymult),
       z: p.z,
     };
 
-    ray.normalize();
+    direction.normalize();
 
-    ray
+    Ray {
+      origin: self.eye,
+      direction,
+    }
   }
 }

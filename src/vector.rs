@@ -114,6 +114,10 @@ impl Vector {
     let length = self.length();
     self / length
   }
+
+  pub fn dot(&self, other: &Self) -> f64 {
+    self.x * other.x + self.y * other.y + self.z * other.z
+  }
 }
 
 #[cfg(test)]
