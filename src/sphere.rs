@@ -75,6 +75,10 @@ impl Intersection for SphereIntersection {
     normal.normalize();
     normal
   }
+
+  fn dist_squared(&self) -> f64 {
+    (self.ray.origin - self.point()).length_squared()
+  }
 }
 
 impl IntersectsWithRay<SphereIntersection> for Sphere {

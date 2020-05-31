@@ -82,15 +82,15 @@ pub fn main() {
                     y: 0.0,
                     z: 4.0,
                 },
-                0.8,
+                0.5,
             )),
             Box::new(Sphere::new(
                 Vector {
                     x: 0.0,
                     y: 0.0,
-                    z: -4.0,
+                    z: 3.0,
                 },
-                1.2,
+                0.25,
             )),
         ],
     };
@@ -118,12 +118,10 @@ pub fn main() {
             .copy_ex(&screen_texture, None, None, 0.0, None, false, false)
             .unwrap();
         canvas.present();
-        // let mut i = 0.0;
-        // for mut sphere in &mut scene.renderables {
-        //     sphere.center.z = 4.0 + 1.0 * ((tick) * 0.01).sin();
-        //     i += 1.0;
-        // }
-        scene.cam.set_angle(PI + (tick * 0.01).sin() * PI);
+
+        scene.renderables[1].center.x = 0.5 * (tick * 0.01).sin();
+        scene.renderables[1].center.z = 4.0 + 0.5 * (tick * 0.01).cos();
+
         tick += 1.0;
     }
 }
@@ -164,13 +162,29 @@ where
     I: Intersection,
     R: Material + IntersectsWithRay<I>,
 {
+    let mut intersection_obj: Option<(I, &R, f64)> = None;
     for object in &scene.renderables {
         match object.intersects(ray) {
-            // For now we just return the first we intersect with:
-            Some(intersection) => return Some(object.color_at(&intersection).into()),
             None => continue,
+            Some(this_intersection) => match intersection_obj {
+                None => {
+                    let this_dist_squared = this_intersection.dist_squared();
+                    intersection_obj = Some((this_intersection, &object, this_dist_squared));
+                }
+                Some((_, _, closest_dist_squared)) => {
+                    let this_dist_squared = this_intersection.dist_squared();
+                    if this_dist_squared < closest_dist_squared {
+                        intersection_obj = Some((this_intersection, &object, this_dist_squared));
+                    }
+                }
+            },
         }
     }
+
+    if let Some((intersection, object, _)) = intersection_obj {
+        return Some(object.color_at(&intersection));
+    }
+
     None
 }
 
