@@ -51,7 +51,8 @@ impl Intersection for SphereIntersection {
     // To do this we must:
     //
     // 1. Determine the length `x`
-    // 2.
+    // 2. Subtract this length from `t` and scale our `ray.direction` by it to
+    //    determine our intersection point
     //
     // Recall the formula for a circle:
     //
@@ -294,26 +295,64 @@ mod tests {
   }
 }
 
-// const POINT_LIGHT: Vector = Vector {
-//   x: 0.0,
-//   y: 4.0,
-//   z: 0.0,
-// };
+const POINT_LIGHT: Vector = Vector {
+  x: 0.0,
+  y: 4.0,
+  z: 0.0,
+};
 
-// const OVERHEAD_POINT_LIGHT_POWER: f64 = 100.0;
+const POINT_LIGHT_POWER: f64 = 4.0;
 
 impl Material for Sphere {
   fn color_at<I>(&self, intersection: &I) -> HDRColor
   where
     I: Intersection,
   {
-    let normal = intersection.normal();
-    let result = HDRColor {
-      r: ((1.0 + normal.x) / 2.0) as f32,
-      g: ((1.0 + normal.y) / 2.0) as f32,
-      b: (0.5 - normal.z) as f32,
-    };
+    // For debugging normals:
+    //
+    // let normal = intersection.normal();
+    // return HDRColor {
+    //   r: ((1.0 + normal.x) / 2.0) as f32,
+    //   g: ((1.0 + normal.y) / 2.0) as f32,
+    //   b: (0.5 - normal.z) as f32,
+    // };
 
-    result
+    // ```text
+    //                * <-light.origin
+    //                |
+    //                |
+    //  normal        |
+    //  ""..__  theta |     , - ~ ~ ~ - ,
+    //        ""..__  | , '               ' ,
+    //  *-----------""*                       ,
+    //  ^ray.origin   ^point                   '
+    //              ,                           ,
+    //              ,                           ,
+    // ```
+    //
+    // Let's implement diffuse ("Lambertian") reflection.
+    //
+    // To do this, all we need is the angle between the light source and our
+    // normal.
+
+    // 1. Draw a vector from our intersection point to the light source:
+    let to_light = POINT_LIGHT - intersection.point();
+
+    // 2. Use the dot product to calculate theta.cos()
+    let theta_cos = to_light.dot(&intersection.normal());
+
+    // 3. We employ the inverse-square law to determine how intense the light
+    //    should be:
+    let intensity = POINT_LIGHT_POWER / (to_light.length_squared());
+
+    // 4. Finally, we just multiply our lighting intensity by the cosine of the
+    //    angle between our normal and the incoming light:
+    let illumination = intensity * theta_cos;
+
+    HDRColor {
+      r: illumination as f32,
+      g: illumination as f32,
+      b: illumination as f32,
+    }
   }
 }
