@@ -119,8 +119,8 @@ pub fn main() {
             .unwrap();
         canvas.present();
 
-        scene.renderables[1].center.x = 0.5 * (tick * 0.01).sin();
-        scene.renderables[1].center.z = 4.0 + 0.5 * (tick * 0.01).cos();
+        scene.renderables[1].center.x = 0.5 * (tick * 0.02).sin();
+        scene.renderables[1].center.z = 4.0 + 0.5 * (tick * 0.02).cos();
 
         tick += 1.0;
     }

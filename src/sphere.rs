@@ -300,8 +300,8 @@ mod tests {
 }
 
 const POINT_LIGHT: Vector = Vector {
-  x: 0.0,
-  y: 4.0,
+  x: 2.0,
+  y: 3.0,
   z: 0.0,
 };
 
