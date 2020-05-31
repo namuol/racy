@@ -11,6 +11,7 @@ use sdl2::pixels::Color;
 pub mod camera;
 pub mod intersection;
 pub mod material;
+pub mod plane;
 pub mod ray;
 pub mod sphere;
 pub mod vector;
@@ -18,6 +19,7 @@ pub mod vector;
 use crate::camera::Camera;
 use crate::intersection::*;
 use crate::material::{HDRColor, Material};
+use crate::plane::Plane;
 use crate::ray::Ray;
 use crate::sphere::Sphere;
 use crate::vector::Vector;
@@ -76,21 +78,33 @@ pub fn main() {
             SCREEN_HEIGHT,
         ),
         renderables: vec![
-            Box::new(Sphere::new(
+            // Box::new(Sphere::new(
+            //     Vector {
+            //         x: 0.0,
+            //         y: 0.0,
+            //         z: 4.0,
+            //     },
+            //     0.5,
+            // )),
+            // Box::new(Sphere::new(
+            //     Vector {
+            //         x: 0.0,
+            //         y: 0.0,
+            //         z: 3.0,
+            //     },
+            //     0.25,
+            // )),
+            Box::new(Plane::new(
                 Vector {
                     x: 0.0,
-                    y: 0.0,
-                    z: 4.0,
+                    y: -1.0,
+                    z: 0.0,
                 },
-                0.5,
-            )),
-            Box::new(Sphere::new(
                 Vector {
                     x: 0.0,
-                    y: 0.0,
-                    z: 3.0,
+                    y: 1.0,
+                    z: 0.0,
                 },
-                0.25,
             )),
         ],
     };
@@ -119,8 +133,7 @@ pub fn main() {
             .unwrap();
         canvas.present();
 
-        scene.renderables[1].center.x = 0.5 * (tick * 0.02).sin();
-        scene.renderables[1].center.z = 4.0 + 0.5 * (tick * 0.02).cos();
+        scene.renderables[0].center.y = -1.0 * (tick * 0.02).sin();
 
         tick += 1.0;
     }
@@ -160,7 +173,7 @@ where
 fn cast<I, R>(ray: &Ray, scene: &Scene<R>) -> Option<HDRColor>
 where
     I: Intersection,
-    R: Material + IntersectsWithRay<I>,
+    R: Material + IntersectsWithRay<I> + Sync,
 {
     let mut intersection_obj: Option<(I, &R, f64)> = None;
     for object in &scene.renderables {
