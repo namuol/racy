@@ -66,15 +66,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "earf-rs"
-version = "0.1.0"
-dependencies = [
- "impl_ops",
- "rayon",
- "sdl2",
-]
-
-[[package]]
 name = "either"
 version = "1.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -130,6 +121,15 @@ checksum = "05499f3756671c15885fee9034446956fff3f243d6077b91e5767df161f766b3"
 dependencies = [
  "hermit-abi",
  "libc",
+]
+
+[[package]]
+name = "racy"
+version = "0.1.0"
+dependencies = [
+ "impl_ops",
+ "rayon",
+ "sdl2",
 ]
 
 [[package]]

@@ -1,5 +1,5 @@
 [package]
-name = "earf-rs"
+name = "racy"
 version = "0.1.0"
 authors = ["Louis Acresti <louis.acresti@gmail.com>"]
 edition = "2018"

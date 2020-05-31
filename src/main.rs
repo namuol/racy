@@ -68,7 +68,7 @@ pub fn main() {
         cam: Camera::new(
             Vector {
                 x: 0.0,
-                y: 2.0, // meters
+                y: 0.0, // meters
                 z: 0.0,
             },
             25.0,
@@ -78,30 +78,23 @@ pub fn main() {
         renderables: vec![
             Box::new(Sphere::new(
                 Vector {
-                    x: -2.0,
-                    y: 2.0,
-                    z: 12.0,
+                    x: 0.0,
+                    y: 0.0,
+                    z: 4.0,
                 },
-                1.0,
+                0.8,
             )),
             Box::new(Sphere::new(
                 Vector {
                     x: 0.0,
-                    y: 2.0,
-                    z: 12.0,
+                    y: 0.0,
+                    z: -4.0,
                 },
-                1.0,
-            )),
-            Box::new(Sphere::new(
-                Vector {
-                    x: 2.0,
-                    y: 2.0,
-                    z: 12.0,
-                },
-                1.0,
+                1.2,
             )),
         ],
     };
+    scene.cam.set_angle(PI);
 
     'running: loop {
         for event in event_pump.poll_iter() {
@@ -125,12 +118,12 @@ pub fn main() {
             .copy_ex(&screen_texture, None, None, 0.0, None, false, false)
             .unwrap();
         canvas.present();
-        let mut i = 0.0;
-        for mut sphere in &mut scene.renderables {
-            sphere.center.y = 2.0 + 0.5 * ((tick) * 0.01 + i * PI * 0.45).sin();
-            i += 1.0;
-        }
-        scene.cam.set_angle((tick * 0.01).sin());
+        // let mut i = 0.0;
+        // for mut sphere in &mut scene.renderables {
+        //     sphere.center.z = 4.0 + 1.0 * ((tick) * 0.01).sin();
+        //     i += 1.0;
+        // }
+        scene.cam.set_angle(PI + (tick * 0.01).sin() * PI);
         tick += 1.0;
     }
 }
@@ -157,9 +150,9 @@ where
             None => (),
             Some(color) => {
                 let color: RGB = color.into();
-                pixel[0] = color.r;
+                pixel[0] = color.b;
                 pixel[1] = color.g;
-                pixel[2] = color.b;
+                pixel[2] = color.r;
                 pixel[3] = 255;
             }
         }

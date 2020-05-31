@@ -7,15 +7,15 @@
     {
       "type": "lldb",
       "request": "launch",
-      "name": "Debug executable 'earf-rs'",
+      "name": "Debug executable 'racy'",
       "cargo": {
         "args": [
           "build",
-          "--bin=earf-rs",
-          "--package=earf-rs"
+          "--bin=racy",
+          "--package=racy"
         ],
         "filter": {
-          "name": "earf-rs",
+          "name": "racy",
           "kind": "bin"
         }
       },
@@ -25,16 +25,16 @@
     {
       "type": "lldb",
       "request": "launch",
-      "name": "Debug unit tests in executable 'earf-rs'",
+      "name": "Debug unit tests in executable 'racy'",
       "cargo": {
         "args": [
           "test",
           "--no-run",
-          "--bin=earf-rs",
-          "--package=earf-rs"
+          "--bin=racy",
+          "--package=racy"
         ],
         "filter": {
-          "name": "earf-rs",
+          "name": "racy",
           "kind": "bin"
         }
       },
