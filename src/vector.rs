@@ -25,7 +25,7 @@ pub struct Vector {
   pub z: f64,
 }
 
-impl_op_ex!(+ |a: &Vector, b: &Vector| -> Vector {
+impl_op_ex!(+|a: &Vector, b: &Vector| -> Vector {
   Vector {
     x: a.x + b.x,
     y: a.y + b.y,
