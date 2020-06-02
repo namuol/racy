@@ -18,15 +18,15 @@
 //   getRayFromUV: (u, v)->
 //     p = @look.sub((@perp.mul((@xstart + u*@xmult))))
 //     return new Vector(p.x, @ystart + v*@ymult, p.z).normal()
-use crate::vector::Vector;
 use crate::ray::Ray;
+use crate::vector::Vector;
 
 #[derive(Clone, Copy)]
 pub struct Camera {
   pub eye: Vector,
-  look: Vector,
+  pub look: Vector,
   perp: Vector,
-  angle: f64,
+  pub angle: f64,
   pub screen_width: u32,
   pub screen_height: u32,
   xstart: f64,

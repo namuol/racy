@@ -13,26 +13,35 @@ pub mod intersection;
 pub mod material;
 pub mod plane;
 pub mod ray;
+pub mod scene;
 pub mod sphere;
 pub mod vector;
 
-use crate::camera::Camera;
-use crate::intersection::*;
-use crate::material::{HDRColor, Material};
-use crate::plane::Plane;
-use crate::ray::Ray;
-use crate::sphere::Sphere;
-use crate::vector::Vector;
+use crate::camera::*;
+use crate::material::*;
+use crate::plane::*;
+use crate::ray::*;
+use crate::scene::*;
+use crate::sphere::*;
+use crate::vector::*;
 
-const SCREEN_WIDTH: u32 = 640;
-const SCREEN_HEIGHT: u32 = 400;
+const SCREEN_WIDTH: u32 = 1280;
+const SCREEN_HEIGHT: u32 = 800;
 
-const SCREEN_SCALE: u32 = 2;
+const SCREEN_SCALE: u32 = 1;
 
 const FOG_COLOR: RGB = RGB {
     r: 98,
     g: 192,
     b: 255,
+};
+
+const WHITE: DiffuseColor = DiffuseColor {
+    color: HDRColor {
+        r: 1.0,
+        g: 1.0,
+        b: 1.0,
+    },
 };
 
 pub fn main() {
@@ -78,26 +87,28 @@ pub fn main() {
             SCREEN_HEIGHT,
         ),
         renderables: vec![
-            // Box::new(Sphere::new(
-            //     Vector {
-            //         x: 0.0,
-            //         y: 0.0,
-            //         z: 4.0,
-            //     },
-            //     0.5,
-            // )),
-            // Box::new(Sphere::new(
-            //     Vector {
-            //         x: 0.0,
-            //         y: 0.0,
-            //         z: 3.0,
-            //     },
-            //     0.25,
-            // )),
+            Box::new(Sphere::new(
+                Vector {
+                    x: -1.1,
+                    y: 0.0,
+                    z: 6.0,
+                },
+                1.0,
+                &WHITE,
+            )),
+            Box::new(Sphere::new(
+                Vector {
+                    x: 1.1,
+                    y: 0.0,
+                    z: 6.0,
+                },
+                1.0,
+                &WHITE,
+            )),
             Box::new(Plane::new(
                 Vector {
                     x: 0.0,
-                    y: -1.0,
+                    y: -2.0,
                     z: 0.0,
                 },
                 Vector {
@@ -105,6 +116,7 @@ pub fn main() {
                     y: 1.0,
                     z: 0.0,
                 },
+                &WHITE,
             )),
         ],
     };
@@ -132,23 +144,12 @@ pub fn main() {
             .copy_ex(&screen_texture, None, None, 0.0, None, false, false)
             .unwrap();
         canvas.present();
-
-        scene.renderables[0].center.y = -1.0 * (tick * 0.02).sin();
-
+        scene.cam.set_angle(PI + PI / 6.0 * (tick * 0.03).sin());
         tick += 1.0;
     }
 }
 
-struct Scene<R> {
-    cam: Camera,
-    renderables: Vec<Box<R>>,
-}
-
-fn render<I, R>(scene: &Scene<R>, screen: &mut [u8])
-where
-    I: Intersection,
-    R: Material + IntersectsWithRay<I> + Sync,
-{
+fn render(scene: &Scene, screen: &mut [u8]) {
     let cam = scene.cam;
     let screen_width = cam.screen_width as usize;
     screen.par_chunks_mut(4).enumerate().for_each(|(i, pixel)| {
@@ -170,32 +171,38 @@ where
     });
 }
 
-fn cast<I, R>(ray: &Ray, scene: &Scene<R>) -> Option<HDRColor>
-where
-    I: Intersection,
-    R: Material + IntersectsWithRay<I> + Sync,
-{
-    let mut intersection_obj: Option<(I, &R, f64)> = None;
+fn cast(ray: &Ray, scene: &Scene) -> Option<HDRColor> {
+    let mut intersection_obj: Option<(Vector, &dyn Material, Vector, f64)> = None;
     for object in &scene.renderables {
         match object.intersects(ray) {
             None => continue,
             Some(this_intersection) => match intersection_obj {
                 None => {
-                    let this_dist_squared = this_intersection.dist_squared();
-                    intersection_obj = Some((this_intersection, &object, this_dist_squared));
+                    let this_dist_squared = (ray.origin - this_intersection).length_squared();
+                    intersection_obj = Some((
+                        this_intersection,
+                        object.material(),
+                        object.normal(&this_intersection),
+                        this_dist_squared,
+                    ));
                 }
-                Some((_, _, closest_dist_squared)) => {
-                    let this_dist_squared = this_intersection.dist_squared();
+                Some((_, _, _, closest_dist_squared)) => {
+                    let this_dist_squared = (ray.origin - this_intersection).length_squared();
                     if this_dist_squared < closest_dist_squared {
-                        intersection_obj = Some((this_intersection, &object, this_dist_squared));
+                        intersection_obj = Some((
+                            this_intersection,
+                            object.material(),
+                            object.normal(&this_intersection),
+                            this_dist_squared,
+                        ));
                     }
                 }
             },
         }
     }
 
-    if let Some((intersection, object, _)) = intersection_obj {
-        return Some(object.color_at(&intersection));
+    if let Some((intersection, material, normal, _)) = intersection_obj {
+        return Some(material.color_at(&intersection, &normal, &scene));
     }
 
     None
