@@ -18,7 +18,7 @@ pub mod vector;
 
 use crate::camera::*;
 use crate::material::*;
-// use crate::plane::*;
+use crate::plane::*;
 use crate::scene::*;
 use crate::sphere::*;
 use crate::vector::*;
@@ -132,63 +132,87 @@ pub fn main() {
                 &WHITE,
             )),
             // "Floor"
-            Box::new(Sphere::new(
+            Box::new(Plane::new(
                 Vector {
                     x: 0.0,
-                    y: -10001.0,
-                    z: 8.0,
+                    y: -1.0,
+                    z: 0.0,
                 },
-                10000.0,
+                Vector {
+                    x: 0.0,
+                    y: 1.0,
+                    z: 0.0,
+                },
                 &WHITE,
             )),
             // "Back wall"
-            Box::new(Sphere::new(
+            Box::new(Plane::new(
                 Vector {
                     x: 0.0,
                     y: 0.0,
-                    z: 10014.0,
+                    z: 14.0,
                 },
-                10000.0,
+                Vector {
+                    x: 0.0,
+                    y: 0.0,
+                    z: -1.0,
+                },
                 &WHITE,
             )),
             // "Left wall"
-            Box::new(Sphere::new(
+            Box::new(Plane::new(
                 Vector {
-                    x: 10004.0,
+                    x: 4.0,
                     y: 0.0,
                     z: 0.0,
                 },
-                10000.0,
+                Vector {
+                    x: -1.0,
+                    y: 0.0,
+                    z: 0.0,
+                },
                 &RED,
             )),
             // "Right wall"
-            Box::new(Sphere::new(
+            Box::new(Plane::new(
                 Vector {
-                    x: -10004.0,
+                    x: -4.0,
                     y: 0.0,
                     z: 0.0,
                 },
-                10000.0,
+                Vector {
+                    x: 1.0,
+                    y: 0.0,
+                    z: 0.0,
+                },
                 &GREEN,
             )),
             // "Front wall"
-            Box::new(Sphere::new(
+            Box::new(Plane::new(
                 Vector {
-                    y: 0.0,
                     x: 0.0,
-                    z: -10004.0,
+                    y: 0.0,
+                    z: -4.0,
                 },
-                10000.0,
+                Vector {
+                    x: 0.0,
+                    y: 0.0,
+                    z: 1.0,
+                },
                 &WHITE,
             )),
-            // "Ceiling"
-            Box::new(Sphere::new(
+            // // "Ceiling"
+            Box::new(Plane::new(
                 Vector {
                     x: 0.0,
-                    y: 10008.0,
+                    y: 8.0,
                     z: 0.0,
                 },
-                10000.0,
+                Vector {
+                    x: 0.0,
+                    y: -1.0,
+                    z: 0.0,
+                },
                 &WHITE,
             )),
         ],
@@ -222,12 +246,12 @@ pub fn main() {
             .unwrap();
         canvas.present();
         // scene.cam.set_angle(PI + PI / 20.0 * (tick * 0.045).sin());
-        // scene.cam.eye.x = 4.0 * (tick * 0.03).sin();
-        // scene.cam.eye.z = -2.0 + 1.0 * (tick * 0.03).cos();
-        // scene.cam.eye.y = 1.0 * (tick * 0.01).sin();
+        scene.cam.eye.x = 3.8 * (tick * 0.03).sin();
+        scene.cam.eye.z = -2.0 + 1.0 * (tick * 0.03).cos();
+        scene.cam.eye.y = 0.2 + 1.0 * (tick * 0.01).sin();
         scene.light_pos.x = 3.8 * (tick * 0.03).sin();
         scene.light_pos.z = 7.0 + 3.8 * (tick * 0.03).cos();
-        // scene.light_pos.y = 4.0 + 2.0 * (tick * 0.02).cos();
+        scene.light_pos.y = 3.8 + 2.0 * (tick * 0.02).cos();
         tick += 1.0;
     }
 }
