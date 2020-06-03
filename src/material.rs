@@ -74,6 +74,7 @@ impl Material for DiffuseColor {
 
     // 1. Draw a vector from our intersection point to the light source:
     let to_light = scene.light_pos - point;
+    let dist_to_light = to_light.length();
     match scene.cast(
       &Ray {
         origin: *point,
@@ -81,25 +82,29 @@ impl Material for DiffuseColor {
       },
       depth + 1,
     ) {
-      Some(_) => BLACK,
-      None => {
-        // 2. Use the dot product to calculate theta.cos()
-        let theta_cos = to_light.dot(&normal);
-
-        // 3. We employ the inverse-square law to determine how intense the light
-        //    should be:
-        let intensity = scene.light_power / (to_light.length_squared());
-
-        // 4. Finally, we just multiply our lighting intensity by the cosine of the
-        //    angle between our normal and the incoming light:
-        let illumination = intensity * theta_cos;
-
-        HDRColor {
-          r: illumination as f32,
-          g: illumination as f32,
-          b: illumination as f32,
+      Some(intersection) => {
+        if intersection.t < dist_to_light {
+          return BLACK;
         }
       }
+      None => (),
+    }
+
+    // 2. Use the dot product to calculate theta.cos()
+    let theta_cos = to_light.dot(&normal);
+
+    // 3. We employ the inverse-square law to determine how intense the light
+    //    should be:
+    let intensity = scene.light_power / (to_light.length_squared());
+
+    // 4. Finally, we just multiply our lighting intensity by the cosine of the
+    //    angle between our normal and the incoming light:
+    let illumination: f32 = (intensity * theta_cos) as f32;
+
+    HDRColor {
+      r: illumination * self.color.r,
+      g: illumination * self.color.g,
+      b: illumination * self.color.b,
     }
   }
 }
@@ -120,7 +125,7 @@ pub const DEBUG_NORMALS: DebugNormals = DebugNormals {};
 
 pub struct Mirror {}
 
-const MAX_MIRROR_DEPTH: u8 = 4;
+const MAX_MIRROR_DEPTH: u8 = 8;
 impl Material for Mirror {
   fn color_at(
     &self,
@@ -140,7 +145,19 @@ impl Material for Mirror {
       direction: mirror_direction,
     };
     (match scene.cast(&ray_reflection, depth + 1) {
-      Some(color) => color,
+      Some(intersection) => {
+        let point = ray_reflection.origin + ray_reflection.direction * intersection.t;
+        let object = &scene.renderables[intersection.renderable_idx];
+        let normal = object.normal(&point);
+        let color = object.material().color_at(
+          &point,
+          &normal,
+          &ray_reflection,
+          &scene,
+          intersection.depth + 1,
+        );
+        color
+      }
       None => scene.bg_color,
     }) * 0.8
   }

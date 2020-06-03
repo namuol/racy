@@ -21,16 +21,19 @@ impl Plane {
 }
 
 impl Renderable for Plane {
-  fn intersects(&self, ray: &Ray) -> std::option::Option<Vector> {
-    let denominator = self.normal.dot(&ray.direction);
+  fn intersects(&self, ray: &Ray) -> Option<f64> {
+    let dir = ray.direction.normalized();
+    let denominator = self.normal.normalized().dot(&dir);
     if denominator.abs() < 0.0001 {
       return None;
     }
-    let t = (self.center - ray.origin).dot(&self.normal) / denominator;
+    let d = -self.normal.normalized().dot(&self.center);
+    let t = -(self.normal.normalized().dot(&ray.origin) + d) / denominator;
     if t < 0.0001 {
       return None;
     }
-    Some(ray.direction * t)
+
+    Some(t)
   }
 
   fn normal(&self, _: &Vector) -> Vector {

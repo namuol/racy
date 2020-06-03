@@ -23,7 +23,7 @@ impl Sphere {
 }
 
 impl Renderable for Sphere {
-  fn intersects(&self, ray: &Ray) -> std::option::Option<Vector> {
+  fn intersects(&self, ray: &Ray) -> Option<f64> {
     // ```text
     //                      , - ~ ~ ~ - ,
     //                  , '               ' ,
@@ -107,7 +107,7 @@ impl Renderable for Sphere {
     // - x = sqrt(radius^2 - y^2)
     let x = (self.radius_squared - y_squared).sqrt();
 
-    Some(ray.origin + ray.direction * (t - x))
+    Some(t - x)
   }
 
   fn normal(&self, point: &Vector) -> Vector {

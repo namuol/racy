@@ -9,7 +9,6 @@ use sdl2::keyboard::Keycode;
 use sdl2::pixels::Color;
 
 pub mod camera;
-pub mod intersection;
 pub mod material;
 pub mod plane;
 pub mod ray;
@@ -19,7 +18,7 @@ pub mod vector;
 
 use crate::camera::*;
 use crate::material::*;
-use crate::plane::*;
+// use crate::plane::*;
 use crate::scene::*;
 use crate::sphere::*;
 use crate::vector::*;
@@ -37,6 +36,21 @@ const WHITE: DiffuseColor = DiffuseColor {
     },
 };
 
+const RED: DiffuseColor = DiffuseColor {
+    color: HDRColor {
+        r: 0.92,
+        g: 0.2,
+        b: 0.1,
+    },
+};
+
+const GREEN: DiffuseColor = DiffuseColor {
+    color: HDRColor {
+        r: 0.2,
+        g: 0.92,
+        b: 0.1,
+    },
+};
 pub fn main() {
     let sdl_context = sdl2::init().unwrap();
     let video_subsystem = sdl_context.video().unwrap();
@@ -66,14 +80,17 @@ pub fn main() {
     let mut tick: f64 = 0.0;
     let mut scene = Scene {
         bg_color: HDRColor {
-            r: (98.0 / 255.0),
-            g: (192.0 / 255.0),
-            b: (255.0 / 255.0),
+            // r: (98.0 / 255.0),
+            // g: (192.0 / 255.0),
+            // b: (255.0 / 255.0),
+            r: 0.0,
+            g: 0.0,
+            b: 0.0,
         },
         light_power: 4.0,
         light_pos: Vector {
-            x: 1.0,
-            y: 5.0,
+            x: 0.0,
+            y: 6.0,
             z: 8.0,
         },
         cam: Camera::new(
@@ -89,46 +106,89 @@ pub fn main() {
         renderables: vec![
             Box::new(Sphere::new(
                 Vector {
+                    x: -2.0,
+                    y: 1.0,
+                    z: 12.0,
+                },
+                1.0,
+                &WHITE,
+            )),
+            Box::new(Sphere::new(
+                Vector {
                     x: 0.0,
-                    y: 0.5,
+                    y: 0.0,
                     z: 8.0,
                 },
                 1.0,
                 &MIRROR,
             )),
-            // Box::new(Sphere::new(
-            //     Vector {
-            //         x: 0.0,
-            //         y: 2.0,
-            //         z: 8.0,
-            //     },
-            //     1.0,
-            //     &WHITE,
-            // )),
-            Box::new(Plane::new(
+            Box::new(Sphere::new(
                 Vector {
-                    x: -1.0,
-                    y: 0.0,
-                    z: 0.0,
+                    x: 2.0,
+                    y: 1.0,
+                    z: 8.0,
                 },
-                Vector {
-                    x: 1.0,
-                    y: 0.0,
-                    z: 0.0,
-                },
+                1.0,
                 &WHITE,
             )),
-            Box::new(Plane::new(
+            // "Floor"
+            Box::new(Sphere::new(
                 Vector {
                     x: 0.0,
-                    y: -1.0,
-                    z: 0.0,
+                    y: -10001.0,
+                    z: 8.0,
                 },
+                10000.0,
+                &WHITE,
+            )),
+            // "Back wall"
+            Box::new(Sphere::new(
                 Vector {
                     x: 0.0,
-                    y: 1.0,
+                    y: 0.0,
+                    z: 10014.0,
+                },
+                10000.0,
+                &WHITE,
+            )),
+            // "Left wall"
+            Box::new(Sphere::new(
+                Vector {
+                    x: 10004.0,
+                    y: 0.0,
                     z: 0.0,
                 },
+                10000.0,
+                &RED,
+            )),
+            // "Right wall"
+            Box::new(Sphere::new(
+                Vector {
+                    x: -10004.0,
+                    y: 0.0,
+                    z: 0.0,
+                },
+                10000.0,
+                &GREEN,
+            )),
+            // "Front wall"
+            Box::new(Sphere::new(
+                Vector {
+                    y: 0.0,
+                    x: 0.0,
+                    z: -10004.0,
+                },
+                10000.0,
+                &WHITE,
+            )),
+            // "Ceiling"
+            Box::new(Sphere::new(
+                Vector {
+                    x: 0.0,
+                    y: 10008.0,
+                    z: 0.0,
+                },
+                10000.0,
                 &WHITE,
             )),
         ],
@@ -161,9 +221,13 @@ pub fn main() {
             .copy_ex(&screen_texture, None, None, 0.0, None, false, false)
             .unwrap();
         canvas.present();
-        // scene.cam.set_angle(PI + PI / 20.0 * (tick * 0.03).sin());
-        scene.light_pos.x = 2.0 * (tick * 0.03).sin();
-        scene.light_pos.z = 7.0 + 2.0 * (tick * 0.03).cos();
+        // scene.cam.set_angle(PI + PI / 20.0 * (tick * 0.045).sin());
+        // scene.cam.eye.x = 4.0 * (tick * 0.03).sin();
+        // scene.cam.eye.z = -2.0 + 1.0 * (tick * 0.03).cos();
+        // scene.cam.eye.y = 1.0 * (tick * 0.01).sin();
+        scene.light_pos.x = 3.8 * (tick * 0.03).sin();
+        scene.light_pos.z = 7.0 + 3.8 * (tick * 0.03).cos();
+        // scene.light_pos.y = 4.0 + 2.0 * (tick * 0.02).cos();
         tick += 1.0;
     }
 }
@@ -179,7 +243,13 @@ fn render(scene: &Scene, screen: &mut [u8]) {
 
         match scene.cast(&pixel_ray, 0) {
             None => (),
-            Some(color) => {
+            Some(intersection) => {
+                let point = pixel_ray.origin + pixel_ray.direction * intersection.t;
+                let object = &scene.renderables[intersection.renderable_idx];
+                let normal = object.normal(&point);
+                let color = object
+                    .material()
+                    .color_at(&point, &normal, &pixel_ray, &scene, 0);
                 let color: RGB = color.into();
                 pixel[0] = color.b;
                 pixel[1] = color.g;
