@@ -15,7 +15,8 @@
 //     @
 //   len: ->
 //     return Math.sqrt @x*@x + @y*@y + @z*@z
-
+use core::f64::consts::PI;
+use rand::Rng;
 use std::ops;
 
 #[derive(Debug, PartialEq, Clone, Copy)]
@@ -117,6 +118,19 @@ impl Vector {
 
   pub fn dot(&self, other: &Self) -> f64 {
     self.x * other.x + self.y * other.y + self.z * other.z
+  }
+
+  pub fn random_norm() -> Vector {
+    let mut rng = rand::thread_rng();
+
+    let phi: f64 = rng.gen_range(0.0, PI * 2.0);
+    let costheta: f64 = rng.gen_range(-1.0, 1.0);
+
+    let theta = costheta.acos();
+    let x = (theta).sin() * (phi).cos();
+    let y = (theta).sin() * (phi).sin();
+    let z = (theta).cos();
+    Vector { x, y, z }
   }
 }
 

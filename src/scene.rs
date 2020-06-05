@@ -2,13 +2,19 @@ use crate::camera::Camera;
 use crate::material::*;
 use crate::ray::Ray;
 use crate::vector::Vector;
+use rand::seq::SliceRandom;
+use rand::RngCore;
+
+pub struct PointLight {
+  pub center: Vector,
+  pub color: HDRColor,
+}
 
 pub struct Scene {
   pub cam: Camera,
   pub renderables: Vec<Box<dyn Renderable>>,
   pub bg_color: HDRColor,
-  pub light_pos: Vector,
-  pub light_power: f64,
+  pub lights: Vec<PointLight>,
 }
 
 #[derive(Copy, Clone)]

@@ -2,7 +2,9 @@
 extern crate impl_ops;
 extern crate rayon;
 extern crate sdl2;
+
 use core::f64::consts::PI;
+use rand::prelude::thread_rng;
 use rayon::prelude::*;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
@@ -23,10 +25,10 @@ use crate::scene::*;
 use crate::sphere::*;
 use crate::vector::*;
 
-const SCREEN_WIDTH: u32 = 640;
-const SCREEN_HEIGHT: u32 = 400;
+const SCREEN_WIDTH: u32 = 320;
+const SCREEN_HEIGHT: u32 = 200;
 
-const SCREEN_SCALE: u32 = 2;
+const SCREEN_SCALE: u32 = 3;
 
 const WHITE: DiffuseColor = DiffuseColor {
     color: HDRColor {
@@ -78,6 +80,36 @@ pub fn main() {
     screen_texture.set_blend_mode(sdl2::render::BlendMode::Blend);
     let mut event_pump = sdl_context.event_pump().unwrap();
     let mut tick: f64 = 0.0;
+    let mut lights: Vec<PointLight> = vec![];
+
+    // For "soft shadow" simulation:
+    for _ in 0..1000 {
+        lights.push(PointLight {
+            color: HDRColor {
+                r: 1.0,
+                g: 1.0,
+                b: 1.0,
+            },
+            center: Vector {
+                x: 0.0,
+                y: 6.0,
+                z: 8.0,
+            } + Vector::random_norm() * 2.0,
+        });
+    }
+    // lights.push(PointLight {
+    //     color: HDRColor {
+    //         r: 1.0,
+    //         g: 1.0,
+    //         b: 1.0,
+    //     },
+    //     center: Vector {
+    //         x: 0.0,
+    //         y: 6.0,
+    //         z: 8.0,
+    //     },
+    // });
+
     let mut scene = Scene {
         bg_color: HDRColor {
             // r: (98.0 / 255.0),
@@ -87,12 +119,7 @@ pub fn main() {
             g: 0.0,
             b: 0.0,
         },
-        light_power: 4.0,
-        light_pos: Vector {
-            x: 0.0,
-            y: 6.0,
-            z: 8.0,
-        },
+        lights,
         cam: Camera::new(
             Vector {
                 x: 0.0,
@@ -246,12 +273,12 @@ pub fn main() {
             .unwrap();
         canvas.present();
         // scene.cam.set_angle(PI + PI / 20.0 * (tick * 0.045).sin());
-        scene.cam.eye.x = 3.8 * (tick * 0.03).sin();
-        scene.cam.eye.z = -2.0 + 1.0 * (tick * 0.03).cos();
-        scene.cam.eye.y = 0.2 + 1.0 * (tick * 0.01).sin();
-        scene.light_pos.x = 3.8 * (tick * 0.03).sin();
-        scene.light_pos.z = 7.0 + 3.8 * (tick * 0.03).cos();
-        scene.light_pos.y = 3.8 + 2.0 * (tick * 0.02).cos();
+        // scene.cam.eye.x = 3.8 * (tick * 0.03).sin();
+        // scene.cam.eye.z = -2.0 + 1.0 * (tick * 0.03).cos();
+        // scene.cam.eye.y = 0.2 + 1.0 * (tick * 0.01).sin();
+        // scene.light_pos.x = 3.8 * (tick * 0.03).sin();
+        // scene.light_pos.z = 7.0 + 3.8 * (tick * 0.03).cos();
+        // scene.light_pos.y = 3.8 + 2.0 * (tick * 0.02).cos();
         tick += 1.0;
     }
 }
@@ -265,6 +292,8 @@ fn render(scene: &Scene, screen: &mut [u8]) {
 
         let pixel_ray = cam.get_ray_from_uv(x, y);
 
+        let mut rng = thread_rng();
+
         match scene.cast(&pixel_ray, 0) {
             None => (),
             Some(intersection) => {
@@ -273,7 +302,7 @@ fn render(scene: &Scene, screen: &mut [u8]) {
                 let normal = object.normal(&point);
                 let color = object
                     .material()
-                    .color_at(&point, &normal, &pixel_ray, &scene, 0);
+                    .color_at(&mut rng, &point, &normal, &pixel_ray, &scene, 0);
                 let color: RGB = color.into();
                 pixel[0] = color.b;
                 pixel[1] = color.g;
