@@ -5,6 +5,7 @@ use crate::vector::Vector;
 use rand::seq::SliceRandom;
 use rand::RngCore;
 
+#[derive(Copy, Clone)]
 pub struct PointLight {
   pub center: Vector,
   pub color: HDRColor,
@@ -15,6 +16,7 @@ pub struct Scene {
   pub renderables: Vec<Box<dyn Renderable>>,
   pub bg_color: HDRColor,
   pub lights: Vec<PointLight>,
+  pub photons: Vec<PointLight>,
 }
 
 #[derive(Copy, Clone)]

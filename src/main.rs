@@ -5,6 +5,7 @@ extern crate sdl2;
 
 use core::f64::consts::PI;
 use rand::prelude::thread_rng;
+use rand::seq::SliceRandom;
 use rayon::prelude::*;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
@@ -21,14 +22,15 @@ pub mod vector;
 use crate::camera::*;
 use crate::material::*;
 use crate::plane::*;
+use crate::ray::*;
 use crate::scene::*;
 use crate::sphere::*;
 use crate::vector::*;
 
-const SCREEN_WIDTH: u32 = 320;
-const SCREEN_HEIGHT: u32 = 200;
+const SCREEN_WIDTH: u32 = 160;
+const SCREEN_HEIGHT: u32 = 100;
 
-const SCREEN_SCALE: u32 = 3;
+const SCREEN_SCALE: u32 = 5;
 
 const WHITE: DiffuseColor = DiffuseColor {
     color: HDRColor {
@@ -83,12 +85,12 @@ pub fn main() {
     let mut lights: Vec<PointLight> = vec![];
 
     // For "soft shadow" simulation:
-    for _ in 0..1000 {
+    for _ in 0..10000 {
         lights.push(PointLight {
             color: HDRColor {
-                r: 1.0,
-                g: 1.0,
-                b: 1.0,
+                r: 4.0,
+                g: 4.0,
+                b: 4.0,
             },
             center: Vector {
                 x: 0.0,
@@ -120,6 +122,7 @@ pub fn main() {
             b: 0.0,
         },
         lights,
+        photons: vec![],
         cam: Camera::new(
             Vector {
                 x: 0.0,
@@ -184,7 +187,7 @@ pub fn main() {
                     y: 0.0,
                     z: -1.0,
                 },
-                &WHITE,
+                &MIRROR,
             )),
             // "Left wall"
             Box::new(Plane::new(
@@ -245,6 +248,52 @@ pub fn main() {
         ],
     };
 
+    let mut photons = vec![
+        PointLight {
+            color: HDRColor {
+                r: 0.0,
+                g: 0.0,
+                b: 0.0
+            },
+            center: Vector {
+                x: 0.0,
+                y: 0.0,
+                z: 0.0
+            },
+        };
+        10000
+    ];
+
+    // Generate point light sources by shooting lots of rays into the scene from
+    // our light sources.
+    photons.par_chunks_mut(1).for_each(|photon| {
+        let mut rng = thread_rng();
+        match scene.lights.choose(&mut rng) {
+            None => (),
+            Some(light) => {
+                let ray = Ray {
+                    origin: light.center,
+                    direction: Vector::random_norm(),
+                };
+                match scene.cast(&ray, 0) {
+                    None => (),
+                    Some(intersection) => {
+                        let point = ray.origin + ray.direction * intersection.t;
+                        let object = &scene.renderables[intersection.renderable_idx];
+                        let normal = object.normal(&point);
+                        let color = object
+                            .material()
+                            .color_at(&mut rng, &point, &normal, &ray, &scene, 0);
+                        photon[0].center = point;
+                        photon[0].color = color * 8.0;
+                    }
+                }
+            }
+        }
+    });
+
+    scene.photons.append(&mut photons);
+
     canvas.set_draw_color::<HDRColor>(scene.bg_color.into());
     canvas.clear();
     canvas.present();
@@ -273,9 +322,9 @@ pub fn main() {
             .unwrap();
         canvas.present();
         // scene.cam.set_angle(PI + PI / 20.0 * (tick * 0.045).sin());
-        // scene.cam.eye.x = 3.8 * (tick * 0.03).sin();
-        // scene.cam.eye.z = -2.0 + 1.0 * (tick * 0.03).cos();
-        // scene.cam.eye.y = 0.2 + 1.0 * (tick * 0.01).sin();
+        scene.cam.eye.x = 3.8 * (tick * 0.03).sin();
+        scene.cam.eye.z = -2.0 + 1.0 * (tick * 0.03).cos();
+        scene.cam.eye.y = 0.2 + 1.0 * (tick * 0.01).sin();
         // scene.light_pos.x = 3.8 * (tick * 0.03).sin();
         // scene.light_pos.z = 7.0 + 3.8 * (tick * 0.03).cos();
         // scene.light_pos.y = 3.8 + 2.0 * (tick * 0.02).cos();

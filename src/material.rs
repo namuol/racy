@@ -38,6 +38,46 @@ impl_op_ex!(*|a: &HDRColor, b: f32| -> HDRColor {
   }
 });
 
+impl_op_ex!(*|a: &HDRColor, b: HDRColor| -> HDRColor {
+  HDRColor {
+    r: a.r * b.r,
+    g: a.g * b.g,
+    b: a.b * b.b,
+  }
+});
+
+impl_op_ex!(/|a: &HDRColor, b: f32| -> HDRColor {
+  HDRColor {
+    r: a.r / b,
+    g: a.g / b,
+    b: a.b / b,
+  }
+});
+impl_op_ex!(/|a: &HDRColor, b: HDRColor| -> HDRColor {
+  HDRColor {
+    r: a.r / b.r,
+    g: a.g / b.g,
+    b: a.b / b.b,
+  }
+});
+
+impl_op_ex!(*=|a: &mut HDRColor, b: f32| {
+  a.r *= b;
+  a.g *= b;
+  a.b *= b;
+});
+impl_op_ex!(/=|a: &mut HDRColor, b: f32| {
+  a.r /= b;
+  a.g /= b;
+  a.b /= b;
+});
+
+impl_op_ex!(+=|a: &mut HDRColor, b: &HDRColor| {
+  a.r += b.r;
+  a.g += b.g;
+  a.b += b.b;
+});
+
 const BLACK: HDRColor = HDRColor {
   r: 0.0,
   g: 0.0,
@@ -75,7 +115,12 @@ impl Material for DiffuseColor {
     //
     // To do this, all we need is the angle between the light source and our
     // normal.
-    let mut illumination: f64 = 0.0;
+    let mut color = HDRColor {
+      r: 0.0,
+      g: 0.0,
+      b: 0.0,
+    };
+
     let light_samples: usize = scene.lights.len().min(10);
     for light in scene.lights.as_slice().choose_multiple(rng, light_samples) {
       // 1. Draw a vector from our intersection point to the light source:
@@ -99,19 +144,49 @@ impl Material for DiffuseColor {
       let theta_cos = to_light.dot(&normal);
       // 3. We employ the inverse-square law to determine how intense the light
       //    should be:
-      let intensity = 4.0 / (to_light.length_squared());
+      let intensity = 1.0 / (to_light.length_squared());
       // 4. Finally, we just multiply our lighting intensity by the cosine of the
       //    angle between our normal and the incoming light:
-      illumination += intensity * theta_cos;
+      color += light.color * (intensity as f32) * (theta_cos as f32);
     }
 
-    let illumination: f32 = (illumination / (light_samples as f64)) as f32;
+    // HACK: For now treat ALL light sources together as one big light source:
+    color /= light_samples as f32;
 
-    HDRColor {
-      r: illumination * self.color.r,
-      g: illumination * self.color.g,
-      b: illumination * self.color.b,
+    let photon_samples: usize = scene.photons.len().min(10);
+    for light in scene
+      .photons
+      .as_slice()
+      .choose_multiple(rng, photon_samples)
+    {
+      // 1. Draw a vector from our intersection point to the light source:
+      let to_light = light.center - point;
+      let dist_to_light = to_light.length();
+      match scene.cast(
+        &Ray {
+          origin: *point,
+          direction: to_light.normalized(),
+        },
+        depth + 1,
+      ) {
+        None => (),
+        Some(intersection) => {
+          if intersection.t < dist_to_light {
+            continue;
+          }
+        }
+      }
+      // 2. Use the dot product to calculate theta.cos()
+      let theta_cos = to_light.dot(&normal);
+      // 3. We employ the inverse-square law to determine how intense the light
+      //    should be:
+      let intensity = 1.0 / (to_light.length_squared());
+      // 4. Finally, we just multiply our lighting intensity by the cosine of the
+      //    angle between our normal and the incoming light:
+      color += (light.color / (photon_samples as f32)) * (intensity as f32) * (theta_cos as f32);
     }
+
+    self.color * color
   }
 }
 
