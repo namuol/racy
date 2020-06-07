@@ -71,9 +71,9 @@ impl Renderable for Sphere {
     // we can leave early, and in fact we _must_ leave early, otherwise our
     // calculation of `y_squared` will be referring to a sphere in the wrong
     // direction!
-    if t < 0.0 {
-      return None;
-    }
+    // if t < 0.0 {
+    //   return None;
+    // }
 
     // 3. Finally, if we scale our `ray.direction` by `t` (multiply), and
     //    subtract our centerpoint, we get a vector with the length `y`.
@@ -107,7 +107,38 @@ impl Renderable for Sphere {
     // - x = sqrt(radius^2 - y^2)
     let x = (self.radius_squared - y_squared).sqrt();
 
-    Some(t - x)
+    let t0 = t - x;
+    let t1 = t + x;
+
+    // If one of our intersection points is negative, our ray's origin is inside
+    // our sphere
+    if t0 < 0.0 {
+      // If both `t`s are negative, the intersections are occuring "behind" the
+      // ray
+      if t1 < 0.0 {
+        return None;
+      }
+      // ...otherwise if only one intersection is positive, then we know this
+      // must be the intersection point inside the sphere
+      return Some(t1);
+    }
+
+    // If one of our intersection points is negative, our ray's origin is inside
+    // our sphere
+    if t1 < 0.0 {
+      // If both `t`s are negative, the intersections are occuring "behind" the
+      // ray
+      if t0 < 0.0 {
+        return None;
+      }
+      // ...otherwise if only one intersection is positive, then we know this
+      // must be the intersection point inside the sphere
+      return Some(t0);
+    }
+
+    // If both intersection points are positive, we want the smaller of the two
+    // since that is closest to our ray origin:
+    Some(t0.min(t1))
   }
 
   fn normal(&self, point: &Vector) -> Vector {
@@ -124,143 +155,133 @@ impl Renderable for Sphere {
   }
 }
 
-// #[cfg(test)]
-// mod tests {
-//   use super::*;
+#[cfg(test)]
+mod tests {
+  use super::*;
+  use crate::material::MIRROR;
 
-//   #[test]
-//   fn direct_at_sphere() {
-//     let sphere = Sphere::new(
-//       Vector {
-//         x: 0.0,
-//         y: 0.0,
-//         z: 0.0,
-//       },
-//       1.0,
-//     );
+  #[test]
+  fn direct_at_sphere() {
+    let sphere = Sphere::new(
+      Vector {
+        x: 0.0,
+        y: 0.0,
+        z: 4.0,
+      },
+      1.0,
+      &MIRROR,
+    );
 
-//     let ray = Ray {
-//       origin: Vector {
-//         x: 0.0,
-//         y: 0.0,
-//         z: -4.0,
-//       },
-//       direction: Vector {
-//         x: 0.0,
-//         y: 0.0,
-//         z: 1.0,
-//       },
-//     };
+    let ray = Ray {
+      origin: Vector {
+        x: 0.0,
+        y: 0.0,
+        z: 0.0,
+      },
+      direction: Vector {
+        x: 0.0,
+        y: 0.0,
+        z: 1.0,
+      },
+    };
 
-//     match sphere.intersects(&ray) {
-//       None => panic!("Expected an intersection to occur, but got None"),
-//       Some(intersection) => {
-//         assert_eq!(
-//           intersection.point(),
-//           Vector {
-//             x: 0.0,
-//             y: 0.0,
-//             z: -1.0,
-//           },
-//           "Intersection point is not what we expected"
-//         );
-//       }
-//     }
-//   }
+    match sphere.intersects(&ray) {
+      None => panic!("Expected an intersection to occur, but got None"),
+      Some(t) => assert_eq!(t, 3.0),
+    }
+  }
 
-//   #[test]
-//   fn direct_at_sphere_2() {
-//     let sphere = Sphere::new(
-//       Vector {
-//         x: 0.0,
-//         y: 0.0,
-//         z: 4.0,
-//       },
-//       1.0,
-//     );
+  #[test]
+  fn inside_sphere_at_center() {
+    let sphere = Sphere::new(
+      Vector {
+        x: 0.0,
+        y: 0.0,
+        z: 0.0,
+      },
+      1.0,
+      &MIRROR,
+    );
 
-//     let ray = Ray {
-//       origin: Vector {
-//         x: 0.0,
-//         y: 0.0,
-//         z: 0.0,
-//       },
-//       direction: Vector {
-//         x: 0.0,
-//         y: 0.0,
-//         z: 1.0,
-//       },
-//     };
+    // We test 1000 random rays out from the center; they should always be equal
+    // to the sphere's radius, since the ray is located at the exact center of
+    // the sphere.
+    for _ in 0..1000 {
+      let ray = Ray {
+        origin: Vector {
+          x: 0.0,
+          y: 0.0,
+          z: 0.0,
+        },
+        direction: Vector::random_norm(),
+      };
+      match sphere.intersects(&ray) {
+        None => panic!("Expected an intersection to occur, but got None"),
+        Some(t) => assert_eq!(t, sphere.radius),
+      }
+    }
+  }
 
-//     match sphere.intersects(&ray) {
-//       None => panic!("Expected an intersection to occur, but got None"),
-//       Some(intersection) => {
-//         assert_eq!(
-//           intersection.point(),
-//           Vector {
-//             x: 0.0,
-//             y: 0.0,
-//             z: 3.0,
-//           },
-//           "Intersection point is not what we expected"
-//         );
-//       }
-//     }
-//   }
+  #[test]
+  fn inside_sphere_off_center() {
+    let sphere = Sphere::new(
+      Vector {
+        x: 0.0,
+        y: 0.0,
+        z: 0.0,
+      },
+      1.0,
+      &MIRROR,
+    );
 
-//   #[test]
-//   fn away_from_sphere() {
-//     let sphere = Sphere::new(
-//       Vector {
-//         x: 0.0,
-//         y: 0.0,
-//         z: 4.0,
-//       },
-//       1.0,
-//     );
-//     let ray = Ray {
-//       origin: Vector {
-//         x: 0.0,
-//         y: 0.0,
-//         z: 0.0,
-//       },
-//       direction: Vector {
-//         x: 0.0,
-//         y: 0.0,
-//         z: -1.0,
-//       },
-//     };
-//     match sphere.intersects(&ray) {
-//       None => (),
-//       Some(_) => panic!("Expected no intersection to occur, but we got Some!"),
-//     }
-//   }
+    // We test 1000 random rays out from the center; they should always be equal
+    // to the sphere's radius, since the ray is located at the exact center of
+    // the sphere.
+    let ray = Ray {
+      origin: Vector {
+        x: 0.0,
+        y: 0.0,
+        z: 0.5,
+      },
+      direction: Vector {
+        x: 0.0,
+        y: 0.0,
+        z: 1.0,
+      },
+    };
+    match sphere.intersects(&ray) {
+      None => panic!("Expected an intersection to occur, but got None"),
+      Some(t) => assert_eq!(t, 0.5),
+    }
 
-//   #[test]
-//   fn away_from_sphere_2() {
-//     let sphere = Sphere::new(
-//       Vector {
-//         x: 0.0,
-//         y: 0.0,
-//         z: 0.0,
-//       },
-//       1.0,
-//     );
-//     let ray = Ray {
-//       origin: Vector {
-//         x: 0.0,
-//         y: 0.0,
-//         z: -4.0,
-//       },
-//       direction: Vector {
-//         x: 0.0,
-//         y: 0.0,
-//         z: -1.0,
-//       },
-//     };
-//     match sphere.intersects(&ray) {
-//       None => (),
-//       Some(_) => panic!("Expected no intersection to occur, but we got Some!"),
-//     }
-//   }
-// }
+    let sphere = Sphere::new(
+      Vector {
+        x: 0.0,
+        y: 0.0,
+        z: 0.0,
+      },
+      1.0,
+      &MIRROR,
+    );
+
+    // We test 1000 random rays out from the center; they should always be equal
+    // to the sphere's radius, since the ray is located at the exact center of
+    // the sphere.
+    let ray = Ray {
+      origin: Vector {
+        x: 0.0,
+        y: 0.0,
+        z: -0.5,
+      },
+      direction: Vector {
+        x: 0.0,
+        y: 0.0,
+        z: 1.0,
+      },
+    };
+    match sphere.intersects(&ray) {
+      None => panic!("Expected an intersection to occur, but got None"),
+      Some(t) => assert_eq!(t, 1.5),
+    }
+  }
+}

@@ -6,11 +6,9 @@ extern crate sdl2;
 use core::f64::consts::PI;
 use rand::prelude::thread_rng;
 use rand::seq::SliceRandom;
-use rand_distr::{Distribution, Normal, NormalError};
 use rayon::prelude::*;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
-use sdl2::pixels::Color;
 
 pub mod camera;
 pub mod material;
@@ -56,33 +54,8 @@ const GREEN: DiffuseColor = DiffuseColor {
         b: 0.1,
     },
 };
-pub fn main() {
-    let sdl_context = sdl2::init().unwrap();
-    let video_subsystem = sdl_context.video().unwrap();
-    let window = video_subsystem
-        .window(
-            "racy",
-            SCREEN_WIDTH * SCREEN_SCALE,
-            SCREEN_HEIGHT * SCREEN_SCALE,
-        )
-        .position_centered()
-        .build()
-        .unwrap();
 
-    let _image_context = sdl2::image::init(sdl2::image::InitFlag::JPG);
-    let mut canvas = window.into_canvas().present_vsync().build().unwrap();
-    let texture_creator = canvas.texture_creator();
-
-    let mut screen_texture = texture_creator
-        .create_texture_streaming(
-            texture_creator.default_pixel_format(),
-            SCREEN_WIDTH,
-            SCREEN_HEIGHT,
-        )
-        .unwrap();
-    screen_texture.set_blend_mode(sdl2::render::BlendMode::Blend);
-    let mut event_pump = sdl_context.event_pump().unwrap();
-    let mut tick: f64 = 0.0;
+fn basic_scene() -> Scene {
     let mut lights: Vec<Light> = vec![];
 
     lights.push(Light {
@@ -99,7 +72,7 @@ pub fn main() {
         radius: 0.0,
     });
 
-    let mut scene = Scene {
+    Scene {
         bg_color: HDRColor {
             // r: (98.0 / 255.0),
             // g: (192.0 / 255.0),
@@ -233,7 +206,38 @@ pub fn main() {
                 &WHITE,
             )),
         ],
-    };
+    }
+}
+
+pub fn main() {
+    let sdl_context = sdl2::init().unwrap();
+    let video_subsystem = sdl_context.video().unwrap();
+    let window = video_subsystem
+        .window(
+            "racy",
+            SCREEN_WIDTH * SCREEN_SCALE,
+            SCREEN_HEIGHT * SCREEN_SCALE,
+        )
+        .position_centered()
+        .build()
+        .unwrap();
+
+    let _image_context = sdl2::image::init(sdl2::image::InitFlag::JPG);
+    let mut canvas = window.into_canvas().present_vsync().build().unwrap();
+    let texture_creator = canvas.texture_creator();
+
+    let mut screen_texture = texture_creator
+        .create_texture_streaming(
+            texture_creator.default_pixel_format(),
+            SCREEN_WIDTH,
+            SCREEN_HEIGHT,
+        )
+        .unwrap();
+    screen_texture.set_blend_mode(sdl2::render::BlendMode::Blend);
+    let mut event_pump = sdl_context.event_pump().unwrap();
+    let mut tick: f64 = 0.0;
+
+    let mut scene = basic_scene();
 
     // scene.lights.clear(); // Turn off all lights
 

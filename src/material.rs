@@ -148,7 +148,7 @@ impl Material for DiffuseColor {
       g: 0.0,
       b: 0.0,
     };
-
+    let shadow_ray_origin = point + normal * 0.0001;
     for light in &scene.lights {
       let light_samples: usize = 1 + (light.radius * 5.0).round() as usize;
 
@@ -158,7 +158,7 @@ impl Material for DiffuseColor {
         let dist_to_light = to_light.length();
         match scene.cast(
           &Ray {
-            origin: *point,
+            origin: shadow_ray_origin,
             direction: to_light.normalized(),
           },
           depth + 1,
@@ -200,7 +200,7 @@ impl Material for DiffuseColor {
       }
       match scene.cast(
         &Ray {
-          origin: *point,
+          origin: shadow_ray_origin,
           direction: to_light.normalized(),
         },
         depth + 1,
@@ -269,7 +269,7 @@ impl Material for Mirror {
     let neg_norm = normal * -1.0;
     let mirror_direction = ray.direction - neg_norm * 2.0 * (ray.direction.dot(&neg_norm));
     let ray_reflection = Ray {
-      origin: *point,
+      origin: point + normal * 0.001,
       direction: mirror_direction,
     };
     (match scene.cast(&ray_reflection, depth + 1) {
@@ -299,39 +299,18 @@ pub struct Refractor {
 impl Material for Refractor {
   fn color_at(
     &self,
-    rng: &mut ThreadRng,
-    point: &Vector,
-    normal: &Vector,
-    ray: &Ray,
-    scene: &Scene,
-    depth: u8,
+    _rng: &mut ThreadRng,
+    _point: &Vector,
+    _normal: &Vector,
+    _ray: &Ray,
+    _scene: &Scene,
+    _depth: u8,
   ) -> HDRColor {
-    if depth > MAX_MIRROR_DEPTH {
-      return BLACK;
+    HDRColor {
+      r: self.refractive_index as f32,
+      g: self.refractive_index as f32,
+      b: self.refractive_index as f32,
     }
-    let neg_norm = normal * -1.0;
-    let mirror_direction = ray.direction - neg_norm * 2.0 * (ray.direction.dot(&neg_norm));
-    let ray_reflection = Ray {
-      origin: *point,
-      direction: mirror_direction,
-    };
-    (match scene.cast(&ray_reflection, depth + 1) {
-      Some(intersection) => {
-        let point = ray_reflection.origin + ray_reflection.direction * intersection.t;
-        let object = &scene.renderables[intersection.renderable_idx];
-        let normal = object.normal(&point);
-        let color = object.material().color_at(
-          rng,
-          &point,
-          &normal,
-          &ray_reflection,
-          &scene,
-          intersection.depth + 1,
-        );
-        color
-      }
-      None => scene.bg_color,
-    }) * (1.0 - (depth as f32 / MAX_MIRROR_DEPTH as f32))
   }
 }
 pub const GLASS: Refractor = Refractor {

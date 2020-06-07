@@ -2,8 +2,6 @@ use crate::camera::Camera;
 use crate::material::*;
 use crate::ray::Ray;
 use crate::vector::Vector;
-use rand::seq::SliceRandom;
-use rand::RngCore;
 
 #[derive(Copy, Clone)]
 pub struct Light {
