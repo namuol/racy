@@ -325,11 +325,14 @@ pub fn main() {
         // scene.cam.eye.z = -2.0 + 1.0 * (tick * 0.03).cos();
         // scene.cam.eye.y = 0.2 + 1.0 * (tick * 0.01).sin();
         scene.lights[0].center.x = 3.2 * (tick * 0.03).sin();
-        // scene.lights[0].center.z = 7.0 + 3.2 * (tick * 0.03).cos();
-        // scene.lights[0].center.y = 3.2 + 2.0 * (tick * 0.02).cos();
+        scene.lights[0].center.z = 7.0 + 3.2 * (tick * 0.03).cos();
+        scene.lights[0].center.y = 3.2 + 2.0 * (tick * 0.02).cos();
         tick += 1.0;
     }
 }
+
+const EXPOSURE: f32 = 1.0;
+const GAMMA: f32 = 1.0;
 
 fn render(scene: &Scene, screen: &mut [u8]) {
     let cam = scene.cam;
@@ -351,35 +354,12 @@ fn render(scene: &Scene, screen: &mut [u8]) {
                 let color = object
                     .material()
                     .color_at(&mut rng, &point, &normal, &pixel_ray, &scene, 0);
-                let color: RGB = color.into();
-                pixel[0] = color.b;
-                pixel[1] = color.g;
-                pixel[2] = color.r;
-                pixel[3] = 255;
+                let display_rgb = color.into_display_rgb(EXPOSURE, GAMMA);
+                pixel[0] = display_rgb.b;
+                pixel[1] = display_rgb.g;
+                pixel[2] = display_rgb.r;
+                pixel[3] = display_rgb.a;
             }
         }
     });
-}
-
-#[derive(Clone, Copy)]
-struct RGB {
-    pub r: u8,
-    pub g: u8,
-    pub b: u8,
-}
-
-impl Into<Color> for RGB {
-    fn into(self) -> Color {
-        Color::RGB(self.r, self.g, self.b)
-    }
-}
-
-impl Into<RGB> for HDRColor {
-    fn into(self) -> RGB {
-        RGB {
-            r: (self.r * 255.0).floor().min(255.0).max(0.0) as u8,
-            g: (self.g * 255.0).floor().min(255.0).max(0.0) as u8,
-            b: (self.b * 255.0).floor().min(255.0).max(0.0) as u8,
-        }
-    }
 }

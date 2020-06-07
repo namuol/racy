@@ -26,6 +26,17 @@ pub struct HDRColor {
   pub b: f32,
 }
 
+impl HDRColor {
+  pub fn into_display_rgb(&self, exposure: f32, gamma: f32) -> Color {
+    Color {
+      r: (255.0 * (self.r * exposure).powf(gamma).min(1.0).max(0.0)).round() as u8,
+      g: (255.0 * (self.g * exposure).powf(gamma).min(1.0).max(0.0)).round() as u8,
+      b: (255.0 * (self.b * exposure).powf(gamma).min(1.0).max(0.0)).round() as u8,
+      a: 255,
+    }
+  }
+}
+
 pub struct DiffuseColor {
   pub color: HDRColor,
 }
