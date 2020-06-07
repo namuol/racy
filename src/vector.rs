@@ -120,6 +120,8 @@ impl Vector {
     self.x * other.x + self.y * other.y + self.z * other.z
   }
 
+  /// Generate a normalized vector pointing in a random direction distributed
+  /// evenly along the unit sphere.
   pub fn random_norm() -> Vector {
     let mut rng = rand::thread_rng();
 

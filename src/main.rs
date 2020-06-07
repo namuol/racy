@@ -6,6 +6,7 @@ extern crate sdl2;
 use core::f64::consts::PI;
 use rand::prelude::thread_rng;
 use rand::seq::SliceRandom;
+use rand_distr::{Distribution, Normal, NormalError};
 use rayon::prelude::*;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
@@ -27,10 +28,10 @@ use crate::scene::*;
 use crate::sphere::*;
 use crate::vector::*;
 
-const SCREEN_WIDTH: u32 = 160;
-const SCREEN_HEIGHT: u32 = 100;
+const SCREEN_WIDTH: u32 = 320;
+const SCREEN_HEIGHT: u32 = 320;
 
-const SCREEN_SCALE: u32 = 5;
+const SCREEN_SCALE: u32 = 3;
 
 const WHITE: DiffuseColor = DiffuseColor {
     color: HDRColor {
@@ -82,35 +83,21 @@ pub fn main() {
     screen_texture.set_blend_mode(sdl2::render::BlendMode::Blend);
     let mut event_pump = sdl_context.event_pump().unwrap();
     let mut tick: f64 = 0.0;
-    let mut lights: Vec<PointLight> = vec![];
+    let mut lights: Vec<Light> = vec![];
 
-    // For "soft shadow" simulation:
-    for _ in 0..10000 {
-        lights.push(PointLight {
-            color: HDRColor {
-                r: 4.0,
-                g: 4.0,
-                b: 4.0,
-            },
-            center: Vector {
-                x: 0.0,
-                y: 6.0,
-                z: 8.0,
-            } + Vector::random_norm() * 2.0,
-        });
-    }
-    // lights.push(PointLight {
-    //     color: HDRColor {
-    //         r: 1.0,
-    //         g: 1.0,
-    //         b: 1.0,
-    //     },
-    //     center: Vector {
-    //         x: 0.0,
-    //         y: 6.0,
-    //         z: 8.0,
-    //     },
-    // });
+    lights.push(Light {
+        color: HDRColor {
+            r: 3.0,
+            g: 3.0,
+            b: 3.0,
+        },
+        center: Vector {
+            x: -3.0,
+            y: 5.0,
+            z: 8.0,
+        },
+        radius: 0.0,
+    });
 
     let mut scene = Scene {
         bg_color: HDRColor {
@@ -129,7 +116,7 @@ pub fn main() {
                 y: 0.0, // meters
                 z: 0.0,
             },
-            25.0,
+            45.0,
             SCREEN_WIDTH,
             SCREEN_HEIGHT,
         ),
@@ -248,51 +235,7 @@ pub fn main() {
         ],
     };
 
-    let mut photons = vec![
-        PointLight {
-            color: HDRColor {
-                r: 0.0,
-                g: 0.0,
-                b: 0.0
-            },
-            center: Vector {
-                x: 0.0,
-                y: 0.0,
-                z: 0.0
-            },
-        };
-        10000
-    ];
-
-    // Generate point light sources by shooting lots of rays into the scene from
-    // our light sources.
-    photons.par_chunks_mut(1).for_each(|photon| {
-        let mut rng = thread_rng();
-        match scene.lights.choose(&mut rng) {
-            None => (),
-            Some(light) => {
-                let ray = Ray {
-                    origin: light.center,
-                    direction: Vector::random_norm(),
-                };
-                match scene.cast(&ray, 0) {
-                    None => (),
-                    Some(intersection) => {
-                        let point = ray.origin + ray.direction * intersection.t;
-                        let object = &scene.renderables[intersection.renderable_idx];
-                        let normal = object.normal(&point);
-                        let color = object
-                            .material()
-                            .color_at(&mut rng, &point, &normal, &ray, &scene, 0);
-                        photon[0].center = point;
-                        photon[0].color = color * 8.0;
-                    }
-                }
-            }
-        }
-    });
-
-    scene.photons.append(&mut photons);
+    // scene.lights.clear(); // Turn off all lights
 
     canvas.set_draw_color::<HDRColor>(scene.bg_color.into());
     canvas.clear();
@@ -312,6 +255,62 @@ pub fn main() {
         }
 
         canvas.clear();
+        let mut photons = vec![
+            Light {
+                color: HDRColor {
+                    r: 0.0,
+                    g: 0.0,
+                    b: 0.0
+                },
+                center: Vector {
+                    x: 0.0,
+                    y: 0.0,
+                    z: 0.0
+                },
+                radius: 0.0,
+            };
+            1000
+        ];
+
+        // Generate point light sources by shooting lots of rays into the scene from
+        // our light sources.
+        photons.par_chunks_mut(1).for_each(|photon| {
+            let mut rng = thread_rng();
+            match scene.lights.choose(&mut rng) {
+                None => (),
+                Some(light) => {
+                    let ray = Ray {
+                        origin: light.center,
+                        direction: Vector::random_norm(),
+                    };
+                    match scene.cast(&ray, 0) {
+                        None => (),
+                        Some(intersection) => {
+                            let point = ray.origin + ray.direction * intersection.t;
+                            let object = &scene.renderables[intersection.renderable_idx];
+                            let normal = object.normal(&point);
+                            let color = object
+                                .material()
+                                .color_at(&mut rng, &point, &normal, &ray, &scene, 0);
+                            photon[0].center = point + (normal * 0.001);
+                            photon[0].color = color;
+                        }
+                    }
+                }
+            }
+        });
+
+        // let total_photon_power = photons.par_iter().fold(
+        //     || HDRColor {
+        //         r: 0.0,
+        //         g: 0.0,
+        //         b: 0.0,
+        //     },
+        //     |acc, photon| acc + photon.color,
+        // );
+
+        scene.photons = photons;
+
         screen_texture
             .with_lock(None, |mut screen, _size| {
                 render(&scene, &mut screen);
@@ -322,12 +321,12 @@ pub fn main() {
             .unwrap();
         canvas.present();
         // scene.cam.set_angle(PI + PI / 20.0 * (tick * 0.045).sin());
-        scene.cam.eye.x = 3.8 * (tick * 0.03).sin();
-        scene.cam.eye.z = -2.0 + 1.0 * (tick * 0.03).cos();
-        scene.cam.eye.y = 0.2 + 1.0 * (tick * 0.01).sin();
-        // scene.light_pos.x = 3.8 * (tick * 0.03).sin();
-        // scene.light_pos.z = 7.0 + 3.8 * (tick * 0.03).cos();
-        // scene.light_pos.y = 3.8 + 2.0 * (tick * 0.02).cos();
+        // scene.cam.eye.x = 3.2 * (tick * 0.03).sin();
+        // scene.cam.eye.z = -2.0 + 1.0 * (tick * 0.03).cos();
+        // scene.cam.eye.y = 0.2 + 1.0 * (tick * 0.01).sin();
+        scene.lights[0].center.x = 3.2 * (tick * 0.03).sin();
+        // scene.lights[0].center.z = 7.0 + 3.2 * (tick * 0.03).cos();
+        // scene.lights[0].center.y = 3.2 + 2.0 * (tick * 0.02).cos();
         tick += 1.0;
     }
 }
@@ -339,7 +338,7 @@ fn render(scene: &Scene, screen: &mut [u8]) {
         let x = i % screen_width;
         let y = i / screen_width;
 
-        let pixel_ray = cam.get_ray_from_uv(x, y);
+        let pixel_ray = cam.get_ray_from_uv(x as f32, y as f32);
 
         let mut rng = thread_rng();
 

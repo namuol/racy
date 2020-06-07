@@ -77,6 +77,23 @@ impl_op_ex!(+=|a: &mut HDRColor, b: &HDRColor| {
   a.g += b.g;
   a.b += b.b;
 });
+impl_op_ex!(-=|a: &mut HDRColor, b: &HDRColor| {
+  a.r -= b.r;
+  a.g -= b.g;
+  a.b -= b.b;
+});
+impl_op_ex!(+|a: &HDRColor, b: &HDRColor| -> HDRColor { HDRColor{
+  r: a.r + b.r,
+  g: a.g + b.g,
+  b: a.b + b.b,
+}});
+impl_op_ex!(-|a: &HDRColor, b: &HDRColor| -> HDRColor {
+  HDRColor {
+    r: a.r - b.r,
+    g: a.g - b.g,
+    b: a.b - b.b,
+  }
+});
 
 const BLACK: HDRColor = HDRColor {
   r: 0.0,
@@ -121,39 +138,44 @@ impl Material for DiffuseColor {
       b: 0.0,
     };
 
-    let light_samples: usize = scene.lights.len().min(10);
-    for light in scene.lights.as_slice().choose_multiple(rng, light_samples) {
-      // 1. Draw a vector from our intersection point to the light source:
-      let to_light = light.center - point;
-      let dist_to_light = to_light.length();
-      match scene.cast(
-        &Ray {
-          origin: *point,
-          direction: to_light.normalized(),
-        },
-        depth + 1,
-      ) {
-        None => (),
-        Some(intersection) => {
-          if intersection.t < dist_to_light {
-            continue;
+    for light in &scene.lights {
+      let light_samples: usize = 1 + (light.radius * 5.0).round() as usize;
+
+      for _ in 0..light_samples {
+        // 1. Draw a vector from our intersection point to the light source:
+        let to_light = (light.center + (Vector::random_norm() * light.radius as f64)) - point;
+        let dist_to_light = to_light.length();
+        match scene.cast(
+          &Ray {
+            origin: *point,
+            direction: to_light.normalized(),
+          },
+          depth + 1,
+        ) {
+          None => (),
+          Some(intersection) => {
+            if intersection.t < dist_to_light {
+              continue;
+            }
           }
         }
+        // 2. Use the dot product to calculate theta.cos()
+        let theta_cos = to_light.dot(&normal);
+        // 3. We employ the inverse-square law to determine how intense the light
+        //    should be:
+        let intensity = 1.0 / ((to_light.length_squared()) * light_samples as f64);
+        // 4. Finally, we just multiply our lighting intensity by the cosine of the
+        //    angle between our normal and the incoming light:
+        color += light.color * (intensity as f32) * (theta_cos as f32);
       }
-      // 2. Use the dot product to calculate theta.cos()
-      let theta_cos = to_light.dot(&normal);
-      // 3. We employ the inverse-square law to determine how intense the light
-      //    should be:
-      let intensity = 1.0 / (to_light.length_squared());
-      // 4. Finally, we just multiply our lighting intensity by the cosine of the
-      //    angle between our normal and the incoming light:
-      color += light.color * (intensity as f32) * (theta_cos as f32);
     }
 
-    // HACK: For now treat ALL light sources together as one big light source:
-    color /= light_samples as f32;
-
-    let photon_samples: usize = scene.photons.len().min(10);
+    // TODO: Disabling photons for now; I have just been endlessly fiddling with
+    // these parameters without basing anything on the actual physical nature of
+    // light. I think I just want to pursue true path tracing, and after that I
+    // will probably have a better grasp on the implications of introducing
+    // thousands of tiny lightsources that mimic GI.
+    let photon_samples: usize = scene.photons.len().min(0);
     for light in scene
       .photons
       .as_slice()
@@ -162,6 +184,9 @@ impl Material for DiffuseColor {
       // 1. Draw a vector from our intersection point to the light source:
       let to_light = light.center - point;
       let dist_to_light = to_light.length();
+      if dist_to_light <= 0.01 {
+        continue;
+      }
       match scene.cast(
         &Ray {
           origin: *point,

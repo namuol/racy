@@ -8,6 +8,7 @@ edition = "2018"
 impl_ops = "0.1.1"
 rayon = "1.3.0"
 rand = "0.7.3"
+rand_distr = "0.2.2"
 
 [dependencies.sdl2]
 version = "0.34.0"

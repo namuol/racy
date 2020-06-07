@@ -79,7 +79,7 @@ impl Camera {
     self
   }
 
-  pub fn get_ray_from_uv(&self, u: usize, v: usize) -> Ray {
+  pub fn get_ray_from_uv(&self, u: f32, v: f32) -> Ray {
     let p = self.look - (self.perp * (self.xstart + (u as f64 * self.xmult)));
 
     let mut direction = Vector {

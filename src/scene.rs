@@ -6,17 +6,18 @@ use rand::seq::SliceRandom;
 use rand::RngCore;
 
 #[derive(Copy, Clone)]
-pub struct PointLight {
+pub struct Light {
   pub center: Vector,
   pub color: HDRColor,
+  pub radius: f32,
 }
 
 pub struct Scene {
   pub cam: Camera,
   pub renderables: Vec<Box<dyn Renderable>>,
   pub bg_color: HDRColor,
-  pub lights: Vec<PointLight>,
-  pub photons: Vec<PointLight>,
+  pub lights: Vec<Light>,
+  pub photons: Vec<Light>,
 }
 
 #[derive(Copy, Clone)]
