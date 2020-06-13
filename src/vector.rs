@@ -120,6 +120,14 @@ impl Vector {
     self.x * other.x + self.y * other.y + self.z * other.z
   }
 
+  pub fn cross(&self, other: &Self) -> Vector {
+    Vector {
+      x: self.y * other.z - self.z * other.y,
+      y: self.z * other.x - self.x * other.z,
+      z: self.x * other.y - self.y * other.x,
+    }
+  }
+
   /// Generate a normalized vector pointing in a random direction distributed
   /// evenly along the unit sphere.
   pub fn random_norm() -> Vector {

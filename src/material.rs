@@ -122,7 +122,7 @@ impl Material for DiffuseColor {
     scene: &Scene,
     depth: u8,
   ) -> HDRColor {
-    if depth > MAX_MIRROR_DEPTH {
+    if depth > MAX_DEPTH {
       return BLACK;
     }
 
@@ -181,47 +181,6 @@ impl Material for DiffuseColor {
       }
     }
 
-    // TODO: Disabling photons for now; I have just been endlessly fiddling with
-    // these parameters without basing anything on the actual physical nature of
-    // light. I think I just want to pursue true path tracing, and after that I
-    // will probably have a better grasp on the implications of introducing
-    // thousands of tiny lightsources that mimic GI.
-    let photon_samples: usize = scene.photons.len().min(0);
-    for light in scene
-      .photons
-      .as_slice()
-      .choose_multiple(rng, photon_samples)
-    {
-      // 1. Draw a vector from our intersection point to the light source:
-      let to_light = light.center - point;
-      let dist_to_light = to_light.length();
-      if dist_to_light <= 0.01 {
-        continue;
-      }
-      match scene.cast(
-        &Ray {
-          origin: shadow_ray_origin,
-          direction: to_light.normalized(),
-        },
-        depth + 1,
-      ) {
-        None => (),
-        Some(intersection) => {
-          if intersection.t < dist_to_light {
-            continue;
-          }
-        }
-      }
-      // 2. Use the dot product to calculate theta.cos()
-      let theta_cos = to_light.dot(&normal);
-      // 3. We employ the inverse-square law to determine how intense the light
-      //    should be:
-      let intensity = 1.0 / (to_light.length_squared());
-      // 4. Finally, we just multiply our lighting intensity by the cosine of the
-      //    angle between our normal and the incoming light:
-      color += (light.color / (photon_samples as f32)) * (intensity as f32) * (theta_cos as f32);
-    }
-
     self.color * color
   }
 }
@@ -252,7 +211,7 @@ pub struct Mirror {
   reflectivity: f32,
 }
 
-const MAX_MIRROR_DEPTH: u8 = 5;
+const MAX_DEPTH: u8 = 15;
 impl Material for Mirror {
   fn color_at(
     &self,
@@ -263,7 +222,7 @@ impl Material for Mirror {
     scene: &Scene,
     depth: u8,
   ) -> HDRColor {
-    if depth > MAX_MIRROR_DEPTH {
+    if depth > MAX_DEPTH {
       return BLACK;
     }
     let neg_norm = normal * -1.0;
@@ -299,17 +258,64 @@ pub struct Refractor {
 impl Material for Refractor {
   fn color_at(
     &self,
-    _rng: &mut ThreadRng,
-    _point: &Vector,
-    _normal: &Vector,
-    _ray: &Ray,
-    _scene: &Scene,
-    _depth: u8,
+    rng: &mut ThreadRng,
+    point: &Vector,
+    normal_: &Vector,
+    ray: &Ray,
+    scene: &Scene,
+    depth: u8,
   ) -> HDRColor {
-    HDRColor {
-      r: self.refractive_index as f32,
-      g: self.refractive_index as f32,
-      b: self.refractive_index as f32,
+    if depth > MAX_DEPTH {
+      return BLACK;
+    }
+
+    let mut ray_dot_n = ray.direction.dot(normal_);
+    let mut normal = *normal_;
+    let (n_in, n_out) = if ray_dot_n > 0.0 {
+      normal *= -1.0;
+      // If `ray_dot_n` is positive, then our ray is going in roughly the same
+      // direction as the normal, which means we are _exiting_ our material into
+      // air:
+      (self.refractive_index, AIR.refractive_index)
+    } else {
+      ray_dot_n = -ray_dot_n;
+      // ...otherwise we are _entering_ our material into air:
+      (AIR.refractive_index, self.refractive_index)
+    };
+
+    // To constrain our refraction ray to the plane of incidence, we need a
+    // normalized vector that is simply our ray direction plus our normal scaled
+    // by some factor.
+    //
+    // The calculation below was adapted from the formulae/code in this tutorial:
+    // https://www.scratchapixel.com/lessons/3d-basic-rendering/introduction-to-shading/reflection-refraction-fresnel
+    let mu = n_in / n_out;
+    let k = 1.0 - (mu * mu) * (1.0 - (ray_dot_n * ray_dot_n));
+    let mut refraction_direction =
+      (ray.direction * (if k < 0.0 { 0.0 } else { mu })) + (normal * (mu * ray_dot_n - k.sqrt()));
+    refraction_direction.normalize();
+
+    let ray_refraction = Ray {
+      origin: point - normal * 0.0001,
+      direction: refraction_direction,
+    };
+
+    match scene.cast(&ray_refraction, depth + 1) {
+      Some(intersection) => {
+        let point = ray_refraction.origin + ray_refraction.direction * intersection.t;
+        let object = &scene.renderables[intersection.renderable_idx];
+        let normal = object.normal(&point);
+        let color = object.material().color_at(
+          rng,
+          &point,
+          &normal,
+          &ray_refraction,
+          &scene,
+          intersection.depth + 1,
+        );
+        color
+      }
+      None => scene.bg_color,
     }
   }
 }
@@ -318,6 +324,9 @@ pub const GLASS: Refractor = Refractor {
 };
 pub const WATER: Refractor = Refractor {
   refractive_index: 1.33,
+};
+pub const AIR: Refractor = Refractor {
+  refractive_index: 1.0,
 };
 
 impl Into<Color> for HDRColor {

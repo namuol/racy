@@ -82,7 +82,6 @@ fn basic_scene() -> Scene {
             b: 0.0,
         },
         lights,
-        photons: vec![],
         cam: Camera::new(
             Vector {
                 x: 0.0,
@@ -119,7 +118,7 @@ fn basic_scene() -> Scene {
                     z: 8.0,
                 },
                 1.0,
-                &WHITE,
+                &GLASS,
             )),
             // "Floor"
             Box::new(Plane::new(
@@ -259,61 +258,6 @@ pub fn main() {
         }
 
         canvas.clear();
-        let mut photons = vec![
-            Light {
-                color: HDRColor {
-                    r: 0.0,
-                    g: 0.0,
-                    b: 0.0
-                },
-                center: Vector {
-                    x: 0.0,
-                    y: 0.0,
-                    z: 0.0
-                },
-                radius: 0.0,
-            };
-            1000
-        ];
-
-        // Generate point light sources by shooting lots of rays into the scene from
-        // our light sources.
-        photons.par_chunks_mut(1).for_each(|photon| {
-            let mut rng = thread_rng();
-            match scene.lights.choose(&mut rng) {
-                None => (),
-                Some(light) => {
-                    let ray = Ray {
-                        origin: light.center,
-                        direction: Vector::random_norm(),
-                    };
-                    match scene.cast(&ray, 0) {
-                        None => (),
-                        Some(intersection) => {
-                            let point = ray.origin + ray.direction * intersection.t;
-                            let object = &scene.renderables[intersection.renderable_idx];
-                            let normal = object.normal(&point);
-                            let color = object
-                                .material()
-                                .color_at(&mut rng, &point, &normal, &ray, &scene, 0);
-                            photon[0].center = point + (normal * 0.001);
-                            photon[0].color = color;
-                        }
-                    }
-                }
-            }
-        });
-
-        // let total_photon_power = photons.par_iter().fold(
-        //     || HDRColor {
-        //         r: 0.0,
-        //         g: 0.0,
-        //         b: 0.0,
-        //     },
-        //     |acc, photon| acc + photon.color,
-        // );
-
-        scene.photons = photons;
 
         screen_texture
             .with_lock(None, |mut screen, _size| {

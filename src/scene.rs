@@ -15,7 +15,6 @@ pub struct Scene {
   pub renderables: Vec<Box<dyn Renderable>>,
   pub bg_color: HDRColor,
   pub lights: Vec<Light>,
-  pub photons: Vec<Light>,
 }
 
 #[derive(Copy, Clone)]
